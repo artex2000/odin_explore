@@ -1,6 +1,7 @@
 package main
 
 import "core:fmt"
+import "core:os"
 
 main :: proc() {
     hello :: struct #packed {
@@ -25,4 +26,9 @@ main :: proc() {
     fmt.printf("size of string: %T, %v\n", str, str);
     fmt.printf("size of slice: %T, %v\n",sli , sli - str);
     fmt.printf("size of dynamic: %T, %v\n",sli , dyn - sli);
+
+
+    argc := len(os.args);
+    fmt.printf("number of arguments: %v\n", argc);
+    for v in os.args do fmt.println(v);
 }

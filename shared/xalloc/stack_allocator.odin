@@ -9,15 +9,15 @@ StackAllocatorData :: struct {
     base: rawptr,
     free_ptr: rawptr,
     size: int,
-    back: Allocator, 
-    stack: []rawptr,
+    back: mem.Allocator, 
+    stack: []uintptr,
     index: int
 }
 
 stack_allocator :: proc(size: int, back: mem.Allocator) -> mem.Allocator {
     //make sure backup allocator is our block allocator
     assert(is_block_allocator(back));
-    ba := cast(^BlockAllocator)back.data;
+    ba := cast(^BlockAllocatorData)back.data;
 
     //calculate required size and allocate memory
     overhead := size_of(StackAllocatorData) + size_of(int) * DEFAULT_STACK_SIZE;
@@ -31,7 +31,7 @@ stack_allocator :: proc(size: int, back: mem.Allocator) -> mem.Allocator {
     data.back = back;
     data.size = size;
     stack_offset := forward(back_mem, size_of(StackAllocatorData), 8);
-    data.stack = mem.slice_ptr(cast(^int)stack_offset, DEFAULT_STACK_SIZE);
+    data.stack = mem.slice_ptr(cast(^uintptr)stack_offset, DEFAULT_STACK_SIZE);
     mem.zero_slice(data.stack);
     data.base = forward(back_mem, overhead, 16);
     data.free_ptr = data.base;
@@ -49,8 +49,8 @@ stack_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
         needed := align_8(size);
         ret_ptr := this.free_ptr;
         if(needed < free) {
-            this.current = forward(this.current, needed, 8);
-            this.stack[this.index] = ret_ptr;
+            this.free_ptr = forward(this.free_ptr, needed, 8);
+            this.stack[this.index] = uintptr(ret_ptr);
             this.index += 1;
             return ret_ptr;
         }
@@ -58,7 +58,7 @@ stack_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
     }
 
     stack_free :: proc(this: ^StackAllocatorData, mem: rawptr) {
-        if mem == this.stack[this.index - 1] {
+        if uintptr(mem) == this.stack[this.index - 1] {
             //if this was the last allocation we can roll back
             this.free_ptr = mem;
             this.index -= 1;
@@ -69,7 +69,7 @@ stack_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
     stack_free_all :: proc(this: ^StackAllocatorData) {
         this.free_ptr = this.base;
         this.index = 0;
-        mem.zero_slice(data.stack);
+        mem.zero_slice(this.stack);
     }
 
     stack_resize :: proc(this: ^StackAllocatorData, size: int,

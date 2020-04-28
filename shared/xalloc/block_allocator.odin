@@ -146,7 +146,7 @@ block_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
     return nil;
 }
 
-is_block_allocator(check: mem.Allocator) -> bool {
+is_block_allocator :: proc(check: mem.Allocator) -> bool {
     this := cast(^BlockAllocatorData)check.data;
     if this.signature == BLOCK_ALLOCATOR_SIGNATURE do return true;
     return false;

@@ -6,11 +6,11 @@ align :: proc(auto_cast base, round: uintptr) -> uintptr {
 }
 
 align_8 :: inline proc(value: int) -> int {
-    return int(align(base, 8));
+    return int(align(value, 8));
 }
 
 align_16 :: inline proc(value: int) -> int {
-    return int(align(base, 16));
+    return int(align(value, 16));
 }
 
 align_ptr_8 :: inline proc(base: rawptr) -> rawptr {
