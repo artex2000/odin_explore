@@ -44,10 +44,10 @@ block_allocator :: proc(base: rawptr, size: u64, block_size: int) -> mem.Allocat
     data.overhead = nb;
 
     //reserve first blocks for Allocator data
-    if nb > 1 {
-        ar.bitarray_set_range(data.toc, 0, nb);
-    } else {
+    if nb == 1 {
         ar.bitarray_set(data.toc, 0);
+    } else {
+        ar.bitarray_set_range(data.toc, 0, nb);
     }
 
     return mem.Allocator { block_allocator_proc, data };
@@ -67,7 +67,16 @@ block_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
         } else {
             idx = ar.bitarray_find_clear_range(this.toc, nb);
         }
+
         if idx == -1 do return nil;
+
+        //mark range as reserved
+        if nb == 1 {
+            ar.bitarray_set(this.toc, idx);
+        } else {
+            ar.bitarray_set_range(this.toc, idx, nb);
+        }
+
         //keep number of subsequently allocated blocks
         this.cnt[idx] = u8(nb);
         return cast(rawptr)(uintptr(this.base) + uintptr(idx * this.block_size));
@@ -77,10 +86,10 @@ block_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
         assert((int(uintptr(old_mem)) % this.block_size) == 0);
         idx := int((uintptr(old_mem) - uintptr(this.base))) / this.block_size;
         nb := int(this.cnt[idx]);
-        if nb > 1 {
-            ar.bitarray_clear_range(this.toc, idx, nb);
-        } else {
+        if nb == 1 {
             ar.bitarray_clear(this.toc, idx);
+        } else {
+            ar.bitarray_clear_range(this.toc, idx, nb);
         }
         this.cnt[idx] = 0;
     }

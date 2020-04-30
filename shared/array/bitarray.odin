@@ -133,19 +133,32 @@ bitarray_find_clear_range :: proc(b: BitArray, size: int) -> int {
 }
 
 bitarray_find_clear_range_big :: proc(b: BitArray, size: int) -> int {
-    n_full := size / BIT_ARRAY_BASE;
+    //number of clear u64 words we need
+    full := size / BIT_ARRAY_BASE;
+    //if not zero we will need one extra word (part of it)
     tail := size % BIT_ARRAY_BASE;
+    //total words
+    total: int;
+    if tail != 0 do total = full + 1;
+    else         do total = full;
+
     for i := 0; i < len(b); i += 1 {
         if bits.count_ones64(b[i]) != 0 do continue;
-        j := 0;
-        for ; j < n_full; j += 1 {
+
+        //here is the start of empty range, but is it big enough?
+        if (i + total) >= len(b) do return -1;
+
+        //scan empty u64 words for required amount
+        j := 1;
+        for ; j < full; j += 1 {
             if bits.count_ones64(b[i + j]) != 0 do break;
         }
-        if (j == n_full) && (cast(int)bits.trailing_zeros64(b[i + j]) >= tail) {
+
+        if (j == full) && (cast(int)bits.trailing_zeros64(b[i + j]) >= tail) {
             return i * BIT_ARRAY_BASE;
         } else {
-            i += n_full;
-            if tail > 0 do i += 1;
+            //empty range wasn't big enough, search further
+            i += j;
         }
     }
     return -1;

@@ -3,7 +3,7 @@ package xalloc
 import "core:mem"
 import rt "core:runtime"
 
-DEFAULT_STACK_SIZE :: 0x1000;
+DEFAULT_STACK_SIZE :: 0x400;
 
 StackAllocatorData :: struct {
     base: rawptr,
@@ -29,12 +29,12 @@ stack_allocator :: proc(size: int, back: mem.Allocator) -> mem.Allocator {
 
     data := cast(^StackAllocatorData)back_mem;
     data.back = back;
-    data.size = size;
+    data.base = forward(back_mem, overhead, 16);
+    data.free_ptr = data.base;
+    data.size = blocks * ba.block_size - int(uintptr(data.base) - uintptr(data));
     stack_offset := forward(back_mem, size_of(StackAllocatorData), 8);
     data.stack = mem.slice_ptr(cast(^uintptr)stack_offset, DEFAULT_STACK_SIZE);
     mem.zero_slice(data.stack);
-    data.base = forward(back_mem, overhead, 16);
-    data.free_ptr = data.base;
 
     return mem.Allocator { stack_allocator_proc, data };
 }
@@ -49,7 +49,7 @@ stack_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
         needed := align_8(size);
         ret_ptr := this.free_ptr;
         if(needed < free) {
-            this.free_ptr = forward(this.free_ptr, needed, 8);
+            this.free_ptr = forward(this.free_ptr, size, 8);
             this.stack[this.index] = uintptr(ret_ptr);
             this.index += 1;
             return ret_ptr;
