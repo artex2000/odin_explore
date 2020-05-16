@@ -11,10 +11,11 @@ main :: proc() {
     bitarray := bt.bitarray_init(arena, 64 * 100);
     set_bit_test(bitarray);
     clear_bit_test(bitarray);
+    is_bit_set_test(bitarray);
     set_bit_range_test(bitarray);
     clear_bit_range_test(bitarray);
-    is_bit_set_test(bitarray);
-    get_first_zero_index_test(bitarray);
+    get_next_set_index_test(bitarray);
+    get_next_clear_index_test(bitarray);
     is_bit_range_clear_test(bitarray);
     count_ones_before_index_test(bitarray);
     find_clear_bit_range_test(bitarray);
@@ -68,6 +69,7 @@ clear_bit_test :: proc(b: bt.BitArray) {
 
 set_bit_range_test :: proc(b: bt.BitArray) {
     fmt.println("Set bit range test");
+    //test 1
     bt.bitarray_clear_all(b);
     bt.bitarray_set_range(b, 32, 64);
     if b[0] != 0xFFFF_FFFF_0000_0000 {
@@ -78,11 +80,25 @@ set_bit_range_test :: proc(b: bt.BitArray) {
         fmt.printf("Expected 0F, get %x\n", b[1]);
         assert(false);
     }
+    //test 2
+    test_idx := [5]int {12, 45, 214, 126, 305};
+    test_sz := [5]int {134, 12, 45, 68, 256};
+    for i := 0; i < 5; i +=1 {
+        bt.bitarray_clear_all(b);
+        bt.bitarray_set_range(b, test_idx[i], test_sz[i]);
+        for j := 0; j < test_sz[i]; j += 1 {
+            if !bt.bitarray_is_set(b, test_idx[i] + j) {
+                fmt.printf("Error: expect bit %d to be set\n", test_idx[i] + j);
+                assert(false);
+            }
+        }
+    }
     fmt.println("---Passed");
 }
 
 clear_bit_range_test :: proc(b: bt.BitArray) {
     fmt.println("Clear bit range test");
+    //test 1
     bt.bitarray_set_all(b);
     bt.bitarray_clear_range(b, 32, 64);
     if b[0] != 0x0000_0000_FFFF_FFFF {
@@ -92,6 +108,19 @@ clear_bit_range_test :: proc(b: bt.BitArray) {
     if b[1] != 0xFFFF_FFFF_0000_0000 {
         fmt.printf("Expected F0, get %x\n", b[0]);
         assert(false);
+    }
+    //test 2
+    test_idx := [5]int {12, 45, 214, 126, 305};
+    test_sz := [5]int {134, 12, 45, 68, 256};
+    for i := 0; i < 5; i +=1 {
+        bt.bitarray_set_all(b);
+        bt.bitarray_clear_range(b, test_idx[i], test_sz[i]);
+        for j := 0; j < test_sz[i]; j += 1 {
+            if bt.bitarray_is_set(b, test_idx[i] + j) {
+                fmt.printf("Error: expect bit %d to be clear\n", test_idx[i] + j);
+                assert(false);
+            }
+        }
     }
     fmt.println("---Passed");
 }
@@ -106,32 +135,46 @@ is_bit_set_test :: proc(b: bt.BitArray) {
     for v in test {
         if !bt.bitarray_is_set(b, v) {
             fmt.printf("Error: expect bit %d to be set\n", v);
-            return;
+            assert(false);
         }
     }
     fmt.println("---Passed");
 }
 
-get_first_zero_index_test :: proc(b: bt.BitArray) {
-    test := [5]int {312, 254, 128, 99, 64};
-    fmt.println("Get first zero index test");
-    bt.bitarray_set_all(b);
-    for i in test {
-        bt.bitarray_clear(b, i);
-        r := bt.bitarray_get_first_zero_index(b);
-        if i != r {
-            fmt.printf("Expected %d, got %d\n", i, r);
-            assert(false);
-        }
-    }
+get_next_set_index_test :: proc(b: bt.BitArray) {
+    test := [5]int {2, 48, 102, 268, 645};
+    fmt.println("Get next set index test");
     bt.bitarray_clear_all(b);
-    for i := 0; i < 256; i += 1 {
-        r := bt.bitarray_get_first_zero_index(b);
-        if i != r {
-            fmt.printf("Expected %d, got %d\n", i, r);
+    for v in test {
+        bt.bitarray_set(b, v);
+    }
+    idx := 0;
+    for v in test {
+        r := bt.bitarray_get_next_set_index(b, idx);
+        if r != v {
+            fmt.printf("Error: expect index %v get %v\n", v, r);
             assert(false);
         }
-        bt.bitarray_set(b, i);
+        idx = r + 1;
+    }
+    fmt.println("---Passed");
+}
+
+get_next_clear_index_test :: proc(b: bt.BitArray) {
+    test := [5]int {2, 48, 102, 268, 645};
+    fmt.println("Get next clear index test");
+    bt.bitarray_set_all(b);
+    for v in test {
+        bt.bitarray_clear(b, v);
+    }
+    idx := 0;
+    for v in test {
+        r := bt.bitarray_get_next_clear_index(b, idx);
+        if r != v {
+            fmt.printf("Error: expect index %v get %v\n", v, r);
+            assert(false);
+        }
+        idx = r + 1;
     }
     fmt.println("---Passed");
 }
@@ -190,9 +233,8 @@ find_clear_bit_range_test :: proc(b: bt.BitArray) {
     //find big range
     bt.bitarray_clear_range(b, 435, 512);
     r = bt.bitarray_find_clear_range(b, 294);
-    aligned := ((435 / 64) + 1) * 64;
-    if r != aligned {
-        fmt.printf("Expected %d, got %d\n", aligned, r);
+    if r != 435 {
+        fmt.printf("Expected 435, got %d\n", r);
         assert(false);
     }
 

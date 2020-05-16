@@ -2,6 +2,7 @@ package xalloc
 
 
 import "core:mem"
+import "core:fmt"
 import rt "core:runtime"
 import ar "shared:array"
 
@@ -16,7 +17,32 @@ BlockAllocatorData :: struct {
     cnt: []u8,
 }
 
-block_allocator :: proc(base: rawptr, size: u64, block_size: int) -> mem.Allocator {
+block_allocator_backed :: proc(size: int, block_size: int, back: mem.Allocator, flags: u64 = 0) -> mem.Allocator {
+    //make sure backup allocator is our block allocator
+    assert(is_block_allocator(back));
+    ba := cast(^BlockAllocatorData)back.data;
+    assert(block_size <= ba.block_size);
+
+    needed := size;
+    if (flags & ALLOCATOR_NO_OVERHEAD) == 0 {
+        //calculate needed size including overhead
+        nb := int(size / block_size);
+        toc_overhead := (nb / ar.BIT_ARRAY_BASE);
+        if (nb % ar.BIT_ARRAY_BASE) != 0 do toc_overhead += 1;
+        toc_overhead *= 8;  //get overhead in bytes
+        cnt_overhead := nb; //1 byte for each block
+        overhead := toc_overhead + cnt_overhead + size_of(BlockAllocatorData);
+        required := overhead + size;
+        blocks := required / ba.block_size;
+        if (required % ba.block_size) != 0 do blocks += 1;
+        needed = blocks * ba.block_size;
+    }
+    back_mem := back.procedure(back.data, .Alloc, needed, 0, nil, 0, 0);
+    assert(back_mem != nil);
+    return block_allocator_raw(back_mem, u64(needed), block_size);
+}
+
+block_allocator_raw :: proc(base: rawptr, size: u64, block_size: int) -> mem.Allocator {
     assert((int(uintptr(base)) % block_size) == 0);
     assert((size % u64(block_size)) == 0);
     data := cast(^BlockAllocatorData)base;
@@ -53,6 +79,8 @@ block_allocator :: proc(base: rawptr, size: u64, block_size: int) -> mem.Allocat
     return mem.Allocator { block_allocator_proc, data };
 }
 
+block_allocator :: proc {block_allocator_raw, block_allocator_backed};
+
 block_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
                              size, alignment: int,
                              old_mem: rawptr, old_size: int, flags: u64 = 0,
@@ -60,12 +88,15 @@ block_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
 
     block_alloc :: proc(this: ^BlockAllocatorData, size: int) -> rawptr {
         assert((size % this.block_size) == 0);
+        fmt.printf("ask %x size\n", size);
         nb := size / this.block_size;
+        fmt.printf("ask %x blocks\n", nb);
         idx := -1;
         if nb == 1 {
-            idx = ar.bitarray_get_first_zero_index(this.toc);
+            idx = ar.bitarray_get_next_clear_index(this.toc, 0);
         } else {
             idx = ar.bitarray_find_clear_range(this.toc, nb);
+            fmt.printf("return index %v\n", idx);
         }
 
         if idx == -1 do return nil;
