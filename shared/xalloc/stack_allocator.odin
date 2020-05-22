@@ -36,6 +36,7 @@ stack_allocator_backed :: proc(size: int, back: mem.Allocator, flags: u64 = 0) -
     }
     back_mem := back.procedure(back.data, .Alloc, needed, 0, nil, 0, 0);
     assert(back_mem != nil);
+    fmt.printf("stack allocator base %x\n", back_mem);
 
     data := cast(^StackAllocatorData)back_mem;
     if (flags & STACK_ALLOCATOR_WRAP) != 0 do data.wrap = true;
@@ -81,6 +82,7 @@ stack_allocator_proc :: proc(data: rawptr, mode: mem.Allocator_Mode,
             this.free_ptr = forward(this.free_ptr, size, 8);
             this.stack[this.index] = uintptr(ret_ptr);
             this.index += 1;
+            fmt.printf("return %v\n", ret_ptr);
             return ret_ptr;
         }
         if this.wrap {

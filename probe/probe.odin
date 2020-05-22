@@ -4,6 +4,7 @@ import "core:mem"
 import "core:fmt"
 import "core:sys/win32"
 import xm "shared:xalloc"
+import ar "shared:array"
 
 main :: proc() {
     get_arena :: proc(auto_cast size: uint) -> rawptr {
@@ -32,18 +33,28 @@ main :: proc() {
 run :: proc() {
     data: win32.Find_Data_W;
     dir := "C:\\work\\misc\\*";
-    search_handle := win32.find_first_file_w(win32.utf8_to_wstring(dir), &data);
+    dir8 := transmute(ar.str8)dir;
+    search_handle := win32.find_first_file_w(cast(win32.Wstring)ar.str8_to_cstr16(dir8), &data);
     if search_handle == win32.INVALID_HANDLE {
         fmt.printf("Can't open directory %s\n", dir);
         return;
     }
     found : win32.Bool = true;
+    no_print := false;
     for found {
-        fmt.printf("%v\n", win32.utf16_to_utf8(data.file_name[:]));
+        if !dot_folder(data.file_name[0],data.file_name[1], data.file_name[2]) {
+            fmt.printf("%v\n", cast(string)ar.cstr16_to_str8(cast(ar.cstr16)&data.file_name[0]));
+        }
         //print_file_name(data.file_name[:]);
         found = win32.find_next_file_w(search_handle, &data);
     }
     win32.find_close(search_handle);
+}
+
+dot_folder :: proc(c1, c2, c3: u16) -> bool {
+    if c1 == 46 && c2 == 0 do return true;
+    if c1 == 46 && c2 == 46 && c3 == 0 do return true;
+    return false;
 }
 
 print_file_name :: proc(name: []u16) {
