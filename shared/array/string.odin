@@ -95,11 +95,11 @@ str8_to_cstr16 :: proc(s: str8) -> cstr16 {
         if v <= 0x7f {
             data[idx] = u16(v);
         } else if (v & ~u8(UTF8_5_BIT_MASK)) == UTF8_2_BYTE_HEADER {
-            data[idx] = u16((s[i] & UTF8_5_BIT_MASK) << 6) | 
+            data[idx] = (u16(s[i] & UTF8_5_BIT_MASK) << 6) | 
                          u16(s[i + 1] & UTF8_6_BIT_MASK);
         } else if (v & ~u8(UTF8_4_BIT_MASK)) == UTF8_3_BYTE_HEADER {
-            data[idx] = u16((s[i] & UTF8_4_BIT_MASK) << 12) | 
-                         u16((s[i + 1] & UTF8_6_BIT_MASK) << 6) |
+            data[idx] = (u16(s[i] & UTF8_4_BIT_MASK) << 12) | 
+                         (u16(s[i + 1] & UTF8_6_BIT_MASK) << 6) |
                          u16(s[i + 2] & UTF8_6_BIT_MASK);
         } else {
             continue;
