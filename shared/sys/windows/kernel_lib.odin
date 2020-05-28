@@ -66,6 +66,41 @@ foreign kernel32 {
             buffer_coord: Coord, 
             write_region: ^Small_Rect) -> Bool ---;
 
+    /* WINBASEAPI BOOL WINAPI GetConsoleMode(
+        _In_ HANDLE hConsoleHandle,
+        _Out_ LPDWORD lpMode);
+    */
+    @(link_name="GetConsoleMode")
+        get_console_mode :: proc(
+            console_handle: Handle,
+            mode: ^Dword) -> Bool ---;
+
+    /* WINBASEAPI BOOL WINAPI SetConsoleMode(
+        _In_ HANDLE hConsoleHandle,
+        _In_ DWORD dwMode);
+    */
+    @(link_name="SetConsoleMode")
+        set_console_mode :: proc(
+            console_handle: Handle,
+            mode: Dword) -> Bool ---;
+
+    /* WINBASEAPI BOOL WINAPI PeekConsoleInputW(
+        _In_ HANDLE hConsoleInput,
+        _Out_ PINPUT_RECORD lpBuffer,
+        _In_ DWORD nLength,
+        _Out_ LPDWORD lpNumberOfEventsRead);
+    */
+    @(link_name="PeekConsoleInputW")
+        peek_console_input :: proc(
+            console_input: Handle,
+            buffer: ^Input_Record,
+            length: Dword,
+            number_of_events_read: ^Dword) -> Bool ---;
+
+    /* WINBASEAPI BOOL WINAPI FlushConsoleInputBuffer(_In_ HANDLE hConsoleInput);*/
+    @(link_name="FlushConsoleInputBuffer")
+        flush_console_input_buffer :: proc(console_input: Handle) -> Bool ---;
+
 //-------------------------------------------------------------------------------------
     /* WINBASEAPI DWORD WINAPI GetLastError(VOID); */
     @(link_name="GetLastError")

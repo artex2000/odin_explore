@@ -46,6 +46,7 @@ main :: proc() {
         return;
     }
 
+    /*
     out2 := w.create_console_screen_buffer(w.GENERIC_READ | w.GENERIC_WRITE,
                     w.FILE_SHARE_READ | w.FILE_SHARE_WRITE,
                     nil, w.CONSOLE_TEXTMODE_BUFFER, nil);
@@ -69,7 +70,9 @@ main :: proc() {
     fmt.printf("Console attributes %v:\n", info.attributes);
     fmt.printf("Console window %v:\n", info.window);
     fmt.printf("Console max window size %v:\n", info.maximum_window_size);
+    */
 
+    /*
     buf := make([]w.Char_Info, info.size.x * info.size.y);
     for _, i in buf {
         buf[i].char = 0x0041;
@@ -81,6 +84,61 @@ main :: proc() {
     if !r {
         fmt.println("Error writing console output");
         return;
+    }
+    */
+
+    inp := w.get_std_handle(w.STD_INPUT_HANDLE);
+    if uintptr(inp) == w.INVALID_HANDLE_VALUE {
+        fmt.println("Error getting STD_IN handle");
+        return;
+    }
+    old_mode: w.Dword;
+    r = w.get_console_mode(inp, &old_mode);
+    if !r {
+        fmt.println("Error getting input mode");
+        return;
+    }
+    fmt.printf("input mode %b\n", old_mode);
+
+    new_mode : w.Dword = w.ENABLE_WINDOW_INPUT | w.ENABLE_MOUSE_INPUT | w.ENABLE_EXTENDED_FLAGS;
+    r = w.set_console_mode(inp, new_mode);
+    if !r {
+        fmt.println("Error setting input mode");
+        return;
+    }
+    process_input(inp);
+
+    w.set_console_mode(inp, old_mode);
+}
+
+process_input :: proc(input: w.Handle) {
+    i := 0;
+    buf := make([]w.Input_Record, 1024);
+    raw := transmute(mem.Raw_Slice)buf;
+    n : w.Dword = 0;
+    for i < 5 {
+        r := w.peek_console_input(input, cast(^w.Input_Record)raw.data, 1024, &n);
+        if !r {
+            fmt.println("Error peeking console");
+            return;
+        }
+        if n == 0 do continue;
+
+        fmt.printf("got %v events\n", n);
+        c :u32 = 0;
+        for v in buf {
+            fmt.printf("event type %v\n", v.event_type);
+            c += 1;
+            if c == n do break;
+        }
+
+        r = w.flush_console_input_buffer(input);
+        if !r {
+            fmt.println("Error flushing input buffer");
+            return;
+        }
+        n = 0;
+        i += 1;
     }
 }
 
