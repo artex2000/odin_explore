@@ -10,8 +10,11 @@ typedef PVOID HANDLE
 typedef int BOOL;
 typedef unsigned long DWORD;
 typedef __int64 LONG_PTR;
-typedef HANDLE HWND
-typedef wchar_t WCHAR
+typedef HANDLE HWND;
+typedef wchar_t WCHAR;
+typedef __int64 LONGLONG;
+typedef long LONG;
+typedef unsigned int UINT;
 */
 
 Handle   :: distinct rawptr; //to compare with INVALID_HANDLE without cast
@@ -24,6 +27,9 @@ Long_Ptr :: i64;
 Lp_Void  :: rawptr;
 Wchar    :: u16;
 Char     :: u8;
+Long     :: i32;
+LongLong :: i64;
+Uint     :: u32;
 
 /* typedef struct _COORD {
     SHORT X;
@@ -170,3 +176,38 @@ Menu_Event_Record :: struct {
 Focus_Event_Record :: struct {
     set_focus: Bool,
 }
+
+/* typedef union _LARGE_INTEGER {
+    struct {
+        DWORD LowPart;
+        LONG HighPart;
+    } DUMMYSTRUCTNAME;
+    struct {
+        DWORD LowPart;
+        LONG HighPart;
+    } u;
+    LONGLONG QuadPart;
+} LARGE_INTEGER;
+*/
+Large_Integer :: struct #raw_union {
+    u: struct {
+        low_part: Dword,
+        high_part: Long,
+    },
+    quad_part: LongLong,
+}
+
+/* typedef struct tagRECT {
+    LONG left;
+    LONG top;
+    LONG right;
+    LONG bottom;
+} RECT, *PRECT, *NRECT, *LPRECT;
+*/
+Rect :: struct  {
+    left: Long,
+    top: Long,
+    right: Long,
+    bottom: Long,
+}
+

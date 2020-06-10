@@ -101,6 +101,30 @@ foreign kernel32 {
     @(link_name="FlushConsoleInputBuffer")
         flush_console_input_buffer :: proc(console_input: Handle) -> Bool ---;
 
+    /* WINBASEAPI BOOL WINAPI SetConsoleCursorPosition(
+        _In_ HANDLE hConsoleOutput,
+        _In_ COORD dwCursorPosition);
+    */
+    @(link_name="SetConsoleCursorPosition")
+        set_console_cursor_position :: proc(
+            console_output: Handle,
+            position: Coord) -> Bool ---;
+
+
+//-------------------------------------------------------------------------------------
+
+    /* WINBASEAPI BOOL WINAPI QueryPerformanceFrequency(_Out_ LARGE_INTEGER* lpFrequency);*/
+    @(link_name="QueryPerformanceFrequency")
+        query_performance_frequency :: proc(frequency: ^Large_Integer) -> Bool ---;
+
+    /* WINBASEAPI BOOL WINAPI QueryPerformanceCounter(_Out_ LARGE_INTEGER* lpPerformanceCount);*/
+    @(link_name="QueryPerformanceCounter")
+        query_performance_counter :: proc(performance_count: ^Large_Integer) -> Bool ---;
+
+    /* WINBASEAPI VOID WINAPI Sleep(_In_ DWORD dwMilliseconds);*/
+    @(link_name="Sleep")
+        sleep :: proc(performance_count: Dword) ---;
+
 //-------------------------------------------------------------------------------------
     /* WINBASEAPI DWORD WINAPI GetLastError(VOID); */
     @(link_name="GetLastError")
