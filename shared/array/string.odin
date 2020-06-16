@@ -30,6 +30,18 @@ cstr8_to_str8 :: proc(s: cstr8) -> str8 {
     return transmute(str8)mem.Raw_Slice{rawptr(s), idx};
 }
 
+str8_to_cstr8 :: proc(s: str8) -> cstr8 {
+    data := make([]u8, len(s) + 1);
+    for v, i in s {
+        data[i] = v;
+    }
+    data[len(s)] = 0;
+
+    //unwrap the slice to get raw pointer
+    raw := transmute(mem.Raw_Slice)data;
+    return cast(cstr8)raw.data;
+}
+
 cstr16_to_str16 :: proc(s: cstr16) -> str16 {
     tmp := transmute([]u16)mem.Raw_Slice{rawptr(s), MAX_CSTRING_LENGTH};
     idx := 0;
@@ -40,27 +52,31 @@ cstr16_to_str16 :: proc(s: cstr16) -> str16 {
     return transmute(str16)mem.Raw_Slice{rawptr(s), idx};
 }
 
+str16_to_cstr16 :: proc(s: str16) -> cstr16 {
+    data := make([]u16, len(s) + 1);
+    for v, i in s {
+        data[i] = v;
+    }
+    data[len(s)] = 0;
+
+    //unwrap the slice to get raw pointer
+    raw := transmute(mem.Raw_Slice)data;
+    return cast(cstr16)raw.data;
+}
+
 //For now cover only 0x0000-0xFFFF range
 //TODO temp vs main allocator
-cstr16_to_str8 :: proc(s: cstr16) -> str8 {
-    tmp := transmute([]u16)mem.Raw_Slice{rawptr(s), MAX_CSTRING_LENGTH};
-    idx := 0;
+str16_to_str8 :: proc(s: str16) -> str8 {
     len := 0;
-    for v in tmp {
-        if v == 0 do break;
-
+    for v in s {
         if v <= 0x7f  do len += 1;
         else if v <=  0x7ff do len += 2;
         else do len += 3;
-
-        idx += 1;
     }
 
     data := make([]u8, len);
-    idx = 0;
-    for v in tmp {
-        if v == 0 do break;
-
+    idx := 0;
+    for v in s {
         if v <= 0x7f {
             data[idx] = u8(v);
             idx += 1;
@@ -79,8 +95,9 @@ cstr16_to_str8 :: proc(s: cstr16) -> str8 {
 }
 
 //TODO temp vs main allocator
-str8_to_cstr16 :: proc(s: str8) -> cstr16 {
-    len := 1; //for null-terminator
+//utf8 to utf16 conversion
+str8_to_str16 :: proc(s: str8) -> str16 {
+    len := 0;
     for v in s {
         if v <= 0x7f do len += 1;
         else if (v & ~u8(UTF8_5_BIT_MASK)) == UTF8_2_BYTE_HEADER do len += 1;
@@ -106,14 +123,18 @@ str8_to_cstr16 :: proc(s: str8) -> cstr16 {
         }
         idx += 1;
     }
-    data[idx] = 0;
-
-    //unwrap the slice to get raw pointer
-    raw := transmute(mem.Raw_Slice)data;
-    return cast(cstr16)raw.data;
+    return str16(data);
 }
-            
 
+cstr16_to_str8 :: proc(s: cstr16) -> str8 {
+    s16 := cstr16_to_str16(s);
+    return str16_to_str8(s16);
+}
+
+str8_to_cstr16 :: proc(s: str8) -> cstr16 {
+    s16 := str8_to_str16(s);
+    return str16_to_cstr16(s16);
+}
 
 
 

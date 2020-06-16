@@ -110,6 +110,32 @@ foreign kernel32 {
             console_output: Handle,
             position: Coord) -> Bool ---;
 
+    /* WINBASEAPI BOOL WINAPI SetConsoleScreenBufferSize(
+        _In_ HANDLE hConsoleOutput,
+        _In_ COORD dwSize);
+    */
+    @(link_name="SetConsoleScreenBufferSize")
+        set_console_screen_buffer_size :: proc(
+            console_output: Handle,
+            size: Coord) -> Bool ---;
+
+    /* WINBASEAPI BOOL WINAPI SetConsoleWindowInfo(
+        _In_ HANDLE hConsoleOutput,
+        _In_ BOOL bAbsolute,
+        _In_ CONST SMALL_RECT* lpConsoleWindow);
+    */
+    @(link_name="SetConsoleWindowInfo")
+        set_console_window_info :: proc(
+            console_output: Handle,
+            absolute: Bool,
+            console_window: ^Small_Rect) -> Bool ---;
+
+    /* WINBASEAPI COORD WINAPI GetLargestConsoleWindowSize(
+        _In_ HANDLE hConsoleOutput);
+    */
+    @(link_name="GetLargestConsoleWindowSize")
+        set_largest_console_window_size :: proc( console_output: Handle) -> Coord ---;
+
 
 //-------------------------------------------------------------------------------------
 

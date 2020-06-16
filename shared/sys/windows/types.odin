@@ -68,7 +68,7 @@ Console_Screen_Buffer_Info :: struct {
     cursor_position:     Coord,
     attributes:          Word,
     window:              Small_Rect,
-    maximum_window_size: Coord,
+    max_window_size:     Coord,
 }
 
 /* typedef struct _SECURITY_ATTRIBUTES {
