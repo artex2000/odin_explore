@@ -47,13 +47,13 @@ init_console_output :: proc() -> bool {
     surface := w.Small_Rect{ 0, 0, info.max_window_size.x - 1, info.max_window_size.y - 1};
     console_output.size = info.max_window_size;
     console_output.surface = surface;
-    console_output.default_attributes = info.attributes;
+    console_output.default_attributes = (info.attributes & 0xFF00) | DARK_REGULAR;
     console_output.buf = make([]w.Char_Info, info.max_window_size.x * info.max_window_size.y);
     console_output.cursor = w.Coord{0, 0};
 
     for _, i in console_output.buf {
         console_output.buf[i].char = ' ';
-        console_output.buf[i].attr = info.attributes;
+        console_output.buf[i].attr = console_output.default_attributes;
     }
 
     raw := transmute(mem.Raw_Slice)console_output.buf;

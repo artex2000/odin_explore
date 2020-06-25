@@ -152,7 +152,9 @@ bx: i16 = 10;
 by: i16 = 10;
 process_char :: proc(c: u16) {
     if c == 'a' do draw_single_box(w.Small_Rect { bx, by, bx + 6, by + 3});
-    if c == 's' do draw_double_box(w.Small_Rect { bx, by, bx + 6, by + 3});
+    else if c == 's' do draw_double_box(w.Small_Rect { bx, by, bx + 6, by + 3});
+    else if c == 'p' do draw_palette_ex();
+    else if c == 'd' do draw_palette_str();
     else if c == 'l' do bx += 10;
     else if c == 'j' do by += 10;
 }
