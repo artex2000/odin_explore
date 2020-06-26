@@ -18,6 +18,7 @@ init_console_output :: proc() -> bool {
         fmt.println("Error getting console info");
         return false;
     } else {
+        fmt.printf("buf size %v\n", info.size);
         fmt.printf("max size %v\n", info.max_window_size);
         fmt.printf("window pos %v\n", info.window);
     }
@@ -38,17 +39,20 @@ init_console_output :: proc() -> bool {
         return false;
     }
 
-    r = w.set_console_screen_buffer_size(out2, info.max_window_size);
+    new_buffer_size := w.Coord{ info.window.right - info.window.left + 1,
+                                info.window.bottom - info.window.top + 1 };
+
+    r = w.set_console_screen_buffer_size(out2, new_buffer_size);
     if !r {
         fmt.println("Error setting screen buffer size");
         return false;
     }
 
-    surface := w.Small_Rect{ 0, 0, info.max_window_size.x - 1, info.max_window_size.y - 1};
-    console_output.size = info.max_window_size;
+    surface := w.Small_Rect{ 0, 0, new_buffer_size.x - 1, new_buffer_size.y - 1 };
+    console_output.size = new_buffer_size;
     console_output.surface = surface;
     console_output.default_attributes = (info.attributes & 0xFF00) | DARK_REGULAR;
-    console_output.buf = make([]w.Char_Info, info.max_window_size.x * info.max_window_size.y);
+    console_output.buf = make([]w.Char_Info, new_buffer_size.x * new_buffer_size.y);
     console_output.cursor = w.Coord{0, 0};
 
     for _, i in console_output.buf {
@@ -58,7 +62,7 @@ init_console_output :: proc() -> bool {
 
     raw := transmute(mem.Raw_Slice)console_output.buf;
     r = w.write_console_output(out2, cast(^w.Char_Info)raw.data,
-            info.max_window_size, w.Coord{0, 0}, &surface);
+            new_buffer_size, w.Coord{0, 0}, &surface);
     if !r {
         fmt.println("Error writing console output");
         return false;
@@ -98,7 +102,7 @@ resize_console_output :: proc(size: w.Coord) {
 
     //we need to clear new buffer if it is bigger than current
     if size.x > console_output.size.x || size.y > console_output.size.y {
-        for _, i in console_output.buf {
+        for _, i in buf {
             buf[i].char = ' ';
             buf[i].attr = console_output.default_attributes;
         }

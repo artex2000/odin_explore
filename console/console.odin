@@ -69,7 +69,7 @@ report_error :: proc() {
     tmp: [1024]u16;
     str := cast(ar.cstr16)&tmp[0];
     err = w.format_message(w.FORMAT_MESSAGE_FROM_SYSTEM, nil, err, 0, rawptr(str), 1024, nil);
-    fmt.println(cast(string)ar.cstr16_to_str8(str));
+    fmt.println(ar.cstr16_to_str8(str));
 }
 
     
@@ -155,6 +155,8 @@ process_char :: proc(c: u16) {
     else if c == 's' do draw_double_box(w.Small_Rect { bx, by, bx + 6, by + 3});
     else if c == 'p' do draw_palette_ex();
     else if c == 'd' do draw_palette_str();
+    else if c == 'f' do draw_button(false);
+    else if c == 'g' do draw_button(true);
     else if c == 'l' do bx += 10;
     else if c == 'j' do by += 10;
 }
