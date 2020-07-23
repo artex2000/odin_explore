@@ -32,7 +32,6 @@ console_save_state: Console_State;
 console_output: Console_Output;
 console_input: Console_Input;
 
-string_buffer: [dynamic]ar.str8;
 
 main :: proc() {
     r := init_console_output();
@@ -55,6 +54,7 @@ main :: proc() {
 
 run :: proc() {
     running: bool = true;
+    setup_main_screen();
     for running {
         read_console_input();
         update_world(&running);
@@ -74,33 +74,61 @@ report_error :: proc() {
 
     
 quit_request := false;
-char_pressed : u16 = 0;
-translate_key_event :: proc(ev: w.Key_Event_Record) {
-    if ev.key_down {
-        if ev.char.unicode_char == 'q' do quit_request = true;
-        else                           do char_pressed = ev.char.unicode_char;
-    }
+string_buffer: [dynamic]ar.str8;
+
+Press_Type :: enum {
+    KEY_UP,
+    KEY_DOWN
 }
+
+Key_Event :: struct {
+    type: Press_Type,
+    key_code: u16,
+    hw_code: u16,
+}
+
+//TODO: replace with ring buffer
+key_event_buf : [10] Key_Event;
+key_event_idx := 0;
+
+translate_key_event :: proc(ev: w.Key_Event_Record) {
+    key := &key_event_buf[key_event_idx];
+    key.key_code = ev.virtual_key_code;
+    key.hw_code = ev.virtual_scan_code;
+    if ev.key_down {
+        key.type = .KEY_DOWN;
+        //TODO: replace with translation command
+        if ev.char.unicode_char == 'q' do quit_request = true;
+    } else {
+        key.type = .KEY_UP;
+    }
+    key_event_idx += 1;
+}
+
 translate_mouse_event :: proc(ev: w.Mouse_Event_Record) {
 }
+
 translate_resize_event :: proc(ev: w.Resize_Event_Record) {
     msg := fmt.aprintf("Resize event: new size is %v", ev.size);
-    append(&string_buffer, transmute(ar.str8)msg);
+    append(&string_buffer, msg);
     resize_console_output(ev.size);
 }
+
 translate_menu_event :: proc(ev: w.Menu_Event_Record) {
 }
+
 translate_focus_event :: proc(ev: w.Focus_Event_Record) {
 
 }
+
 update_world :: proc(running: ^bool) {
     if quit_request do running^ = false;
-    if char_pressed != 0 {
-        process_char(char_pressed);
-        char_pressed = 0;
+    process_input();
+    if keypad_redraw {
+        draw_key_pad();
+        keypad_redraw = false;
     }
-    for v in string_buffer do write_string(v);
-    clear_dynamic_array(&string_buffer);
+    flush_string_buffer();
 }
 
 write_char :: proc(ch: u16) {
@@ -124,19 +152,6 @@ write_char_at :: proc(ch: u16, x, y: i16, attr: u16) {
     console_output.dirty = true;
 }
 
-write_string :: proc(s: ar.str8) {
-    s16 := ar.str8_to_str16(s);
-    out := &console_output;
-    //print on new line for now
-    if out.cursor.x != 0 {
-        out.cursor.x = 0;
-        out.cursor.y += 1;
-    }
-    write_string_at(s16, out.cursor.x, out.cursor.y, out.default_attributes);
-    out.cursor.x += i16(len(s16));
-    w.set_console_cursor_position(out.handle, out.cursor);
-}
-
 write_string_at :: proc(s: ar.str16, x, y: i16, attr: u16) {
     size := console_output.size;
     if x >= size.x || y >= size.y do return;
@@ -148,18 +163,70 @@ write_string_at :: proc(s: ar.str16, x, y: i16, attr: u16) {
     console_output.dirty = true;
 }
 
-bx: i16 = 10;
-by: i16 = 10;
-process_char :: proc(c: u16) {
-    if c == 'a' do draw_single_box(w.Small_Rect { bx, by, bx + 6, by + 3});
-    else if c == 's' do draw_double_box(w.Small_Rect { bx, by, bx + 6, by + 3});
-    else if c == 'p' do draw_palette_ex();
-    else if c == 'd' do draw_palette_str();
-    else if c == 'f' do draw_button(false);
-    else if c == 'g' do draw_button(true);
-    else if c == 'l' do bx += 10;
-    else if c == 'j' do by += 10;
+setup_main_screen :: proc() {
+    update_keypad();
+    draw_key_pad();
 }
 
+current_bt : ^Button = nil;
+keypad_redraw := false;
 
+update_keypad :: proc() {
+    bt := get_next_button();
+    if bt != nil {
+        if current_bt != nil do current_bt.state = .PRESSED;
+        bt.state = .FOCUS;
+        current_bt = bt;
+        keypad_redraw = true;
+    } else {
+        if current_bt != nil {
+            current_bt.state = .PRESSED;
+            current_bt = bt;
+            keypad_redraw = true;
+        }
+    }
+}
+
+process_input :: proc() {
+    for key_event_idx > 0 {
+        key := &key_event_buf[key_event_idx - 1];
+        if key.type == .KEY_DOWN do update_keypad();
+        msg := fmt.aprintf("Key press type %v", key.type);
+        append(&string_buffer, msg);
+        msg = fmt.aprintf("Key press code %v", key.key_code);
+        append(&string_buffer, msg);
+        msg = fmt.aprintf("Key press hw code %v", key.hw_code);
+        append(&string_buffer, msg);
+        key_event_idx -= 1;
+    }
+}
+
+flush_string_buffer :: proc() {
+    y : i16 = 20 + PAD_HEIGHT + PAD_SEPARATOR_HEIGHT;
+    x : i16 = 10;
+    color := u16((DARK_BASE0 << 4) | CONTENT_MEDIUM_LIGHT);
+
+    for v in string_buffer {
+        write_string_at(ar.str8_to_str16(v), x, y, color);
+        y += 1;
+    }
+    clear_dynamic_array(&string_buffer);
+}
+
+draw_key_pad :: proc() {
+    full := true;
+    w : i16 = LETTER_PAD_WIDTH + ARROW_PAD_WIDTH + NUM_PAD_WIDTH + PAD_SEPARATOR_WIDTH * 2;
+    if w > console_output.size.x {
+        w = ARROW_PAD_WIDTH + NUM_PAD_WIDTH + PAD_SEPARATOR_WIDTH;
+        full = false;
+    }
+    h : i16 = PAD_HEIGHT + PAD_SEPARATOR_HEIGHT;
+    x := (console_output.size.x - w) / 2;
+    //y := (console_output.size.y - h) / 2;
+    //x : i16 = 2;
+    y : i16 = 20;
+    draw_key_pad_at(x, y, full);
+}
+
+        
 

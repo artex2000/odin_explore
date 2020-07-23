@@ -89,6 +89,14 @@ flush_console_output :: proc() {
     if !r {
         fmt.println("Error writing console output");
     }
+
+    //clear buffer for fresh writing
+    /*
+    for _, i in console_output.buf {
+        console_output.buf[i].char = ' ';
+        console_output.buf[i].attr = console_output.default_attributes;
+    }
+    */
     console_output.dirty = false;
 }
 
